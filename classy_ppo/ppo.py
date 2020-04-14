@@ -210,13 +210,13 @@ class RefactoredPPO:
             #
             # if avg_return > self.max_return:
 
-            self.logger.save_state({'env': self.env}, epoch)
+            self.logger.save_state({'env': str(self.env)}, epoch)
             generate_train_graph(self.train_returns, self.train_graph_path)
 
             # self.obs = self.env.reset()
 
         if epoch == self.epochs - 1 and proc_id() == 0:
-            self.logger.save_state({'env': self.env}, epoch)
+            self.logger.save_state({'env': str(self.env)}, epoch)
 
     def compute_loss_v(self, data):
         obs, ret = data['obs'], data['ret']
