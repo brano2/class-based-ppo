@@ -60,6 +60,7 @@ class EpochLoggerFixed(EpochLogger):
 class RefactoredPPO:
     def __init__(self, env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
                  steps_per_epoch=4000, epochs=50, gamma=0.99, clip_ratio=0.2, pi_lr=3e-4,
+                 pi_lr_scheduler_class=None, pi_lr_scheduler_kwargs=dict(),
                  vf_lr=1e-3, train_pi_iters=80, train_v_iters=80, lam=0.97, max_ep_len=1000,
                  target_kl=0.01, logger_kwargs=None, save_freq=10, train_graph_path='/home/visgean/',
                  train_graph_name='return.svg', model=None):
@@ -118,6 +119,10 @@ class RefactoredPPO:
         # Set up optimizers for policy and value function
         self.pi_optimizer = Adam(self.ac.pi.parameters(), lr=pi_lr)
         self.vf_optimizer = Adam(self.ac.v.parameters(), lr=vf_lr)
+        self._pi_lr_scheduler: torch.optim.lr_scheduler.StepLR = None
+        if pi_lr_scheduler_class is not None:
+            self._pi_lr_scheduler = pi_lr_scheduler_class(self.pi_optimizer,
+                                                          **pi_lr_scheduler_kwargs)
 
         # Set up model saving
         self.logger.setup_pytorch_saver(self.ac)
@@ -181,10 +186,14 @@ class RefactoredPPO:
             # Perform PPO update!
             self.update()
 
+            pi_lr = self.pi_optimizer.param_groups[0]['lr']
+            if self._pi_lr_scheduler is not None:
+                self._pi_lr_scheduler.step()
+
             # Log info about epoch
             self.logger.log_tabular('Epoch', epoch)
             self.logger.log_tabular('EpRet', with_min_and_max=True)
-            self.logger.log_tabular('EpLen', average_only=True)
+            self.logger.log_tabular('EpLen', average_only=True, with_min_and_max=True)
             self.logger.log_tabular('VVals', with_min_and_max=True)
             self.logger.log_tabular('TotalEnvInteracts', (epoch + 1) * self.steps_per_epoch)
             self.logger.log_tabular('LossPi', average_only=True)
@@ -195,6 +204,7 @@ class RefactoredPPO:
             self.logger.log_tabular('KL', average_only=True)
             self.logger.log_tabular('ClipFrac', average_only=True)
             self.logger.log_tabular('StopIter', average_only=True)
+            self.logger.log_tabular('LR', pi_lr)
             self.logger.log_tabular('Time', time.time() - self.start_time)
             self.logger.dump_tabular()
 
