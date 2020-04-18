@@ -12,22 +12,27 @@ from spinup.utils.mpi_tools import mpi_avg, proc_id, num_procs
 from torch.optim import Adam
 
 
-def run_policy(env, ac, max_ep_len=None, num_episodes=10):
+def run_policy(env, ac, max_ep_len=None, num_episodes=10, tqdm=None):
     returns = []
     ep_lenghts = []
 
-    o, r, d, ep_ret, ep_len, n = env.reset(), 0, False, 0, 0, 0
-    while n < num_episodes:
-        a, v, logp = ac.step(torch.as_tensor(o, dtype=torch.float32))
-        o, r, d, _ = env.step(a)
-        ep_ret += r
-        ep_len += 1
-
-        if d or (ep_len == max_ep_len):
-            returns.append(ep_ret)
-            ep_lenghts.append(ep_len)
-            o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
-            n += 1
+    o, done = env.reset(), False
+    for _ in range(num_episodes):
+        ep_ret, ep_len = 0, 0
+        ep_pbar = None if tqdm is None else tqdm(total=max_ep_len, desc='Episode steps:')
+        # Sample an episode
+        while not done and ep_len != max_ep_len:
+            a, v, logp = ac.step(torch.as_tensor(o, dtype=torch.float32))
+            o, r, done, _ = env.step(a)
+            ep_ret += r
+            ep_len += 1
+            if ep_pbar is not None:
+                ep_pbar.update()
+        returns.append(ep_ret)
+        ep_lenghts.append(ep_len)
+        o, done = env.reset(), False
+        if ep_pbar is not None:
+            ep_pbar.close()
 
     return returns, ep_lenghts
 
