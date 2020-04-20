@@ -169,7 +169,9 @@ class RefactoredPPO:
 
             if terminal or epoch_ended:
                 if epoch_ended and not terminal:
-                    print('Warning: trajectory cut off by epoch at %d steps.' % self.ep_len, flush=True)
+                    self.logger.log(
+                            'Warning: trajectory cut off by epoch at %d steps.' % self.ep_len,
+                            color='yellow')
                 # if trajectory didn't reach terminal state, bootstrap value target
                 if timeout or epoch_ended:
                     _, v, _ = self.ac.step(torch.as_tensor(self.obs, dtype=torch.float32))
