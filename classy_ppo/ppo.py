@@ -67,7 +67,7 @@ class RefactoredPPO:
                  steps_per_epoch=4000, epochs=50, gamma=0.99, clip_ratio=0.2, pi_lr=3e-4,
                  pi_lr_scheduler_class=None, pi_lr_scheduler_kwargs=None,
                  vf_lr=1e-3, train_pi_iters=80, train_v_iters=80, lam=0.97, max_ep_len=1000,
-                 target_kl=0.01, logger_kwargs=None, save_freq=10, train_graph_path='/home/visgean/',
+                 target_kl=0.01, logger=None, save_freq=10, train_graph_path=None,
                  train_graph_name='return.svg', model=None):
 
         self.actor_critic = actor_critic
@@ -84,7 +84,6 @@ class RefactoredPPO:
         self.lam = lam
         self.max_ep_len = max_ep_len
         self.target_kl = target_kl
-        self.logger_kwargs = logger_kwargs or {}
         self.save_freq = save_freq
         pi_lr_scheduler_kwargs = pi_lr_scheduler_kwargs or {}
 
@@ -92,7 +91,7 @@ class RefactoredPPO:
         setup_pytorch_for_mpi()
 
         # Set up logger and save configuration
-        self.logger = EpochLoggerFixed(**self.logger_kwargs)
+        self.logger = logger or EpochLoggerFixed()
         self.logger.save_config(locals())
 
         # Random seed
@@ -145,7 +144,9 @@ class RefactoredPPO:
 
         self.test_lengths = []
 
-        self.train_graph_path = train_graph_path + f'{proc_id()}_{train_graph_name}'
+        self.train_graph_path = None
+        if train_graph_path is not None:
+            self.train_graph_path = train_graph_path + f'{proc_id()}_{train_graph_name}'
 
     def train_epoch(self):
         for t in range(self.local_steps_per_epoch):
@@ -227,7 +228,8 @@ class RefactoredPPO:
             # if avg_return > self.max_return:
 
             self.logger.save_state({'env': str(self.env)}, epoch)
-            generate_train_graph(self.train_returns, self.train_graph_path)
+            if self.train_graph_path is not None:
+                generate_train_graph(self.train_returns, self.train_graph_path)
 
             # self.obs = self.env.reset()
 
