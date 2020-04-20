@@ -63,15 +63,15 @@ class EpochLoggerFixed(EpochLogger):
 
 
 class RefactoredPPO:
-    def __init__(self, env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
+    def __init__(self, env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=None, seed=0,
                  steps_per_epoch=4000, epochs=50, gamma=0.99, clip_ratio=0.2, pi_lr=3e-4,
-                 pi_lr_scheduler_class=None, pi_lr_scheduler_kwargs=dict(),
+                 pi_lr_scheduler_class=None, pi_lr_scheduler_kwargs=None,
                  vf_lr=1e-3, train_pi_iters=80, train_v_iters=80, lam=0.97, max_ep_len=1000,
                  target_kl=0.01, logger_kwargs=None, save_freq=10, train_graph_path='/home/visgean/',
                  train_graph_name='return.svg', model=None):
 
         self.actor_critic = actor_critic
-        self.ac_kwargs = ac_kwargs
+        self.ac_kwargs = ac_kwargs or {}
         self.seed = seed
         self.steps_per_epoch = steps_per_epoch
         self.epochs = epochs
@@ -84,8 +84,9 @@ class RefactoredPPO:
         self.lam = lam
         self.max_ep_len = max_ep_len
         self.target_kl = target_kl
-        self.logger_kwargs = logger_kwargs if logger_kwargs else {}
+        self.logger_kwargs = logger_kwargs or {}
         self.save_freq = save_freq
+        pi_lr_scheduler_kwargs = pi_lr_scheduler_kwargs or {}
 
         # Special function to avoid certain slowdowns from PyTorch + MPI combo.
         setup_pytorch_for_mpi()
