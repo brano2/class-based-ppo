@@ -137,6 +137,7 @@ class RefactoredPPO:
         self.obs = self.env.reset()
         self.ep_ret = 0
         self.ep_len = 0
+        self.ep_infos = []  # Holds lists of info dicts from episodes of the last epoch
 
         self.test_returns = []
         self.train_returns = []
@@ -149,12 +150,15 @@ class RefactoredPPO:
             self.train_graph_path = train_graph_path + f'{proc_id()}_{train_graph_name}'
 
     def train_epoch(self):
+        infos = []
+        self.ep_infos = []
         for t in range(self.local_steps_per_epoch):
             a, v, logp = self.ac.step(torch.as_tensor(self.obs, dtype=torch.float32))
 
-            next_o, r, d, _ = self.env.step(a)
+            next_o, r, d, info = self.env.step(a)
             self.ep_ret += r
             self.ep_len += 1
+            infos.append(info)
 
             # save and log
             self.buf.store(self.obs, a, r, v, logp)
@@ -181,10 +185,12 @@ class RefactoredPPO:
                 if terminal:
                     # only save EpRet / EpLen if trajectory finished
                     self.logger.store(EpRet=self.ep_ret, EpLen=self.ep_len)
+                    self.ep_infos.append(infos)
                 self.obs = self.env.reset()
 
                 self.ep_ret = 0
                 self.ep_len = 0
+                infos = []
 
     def train(self):
         # Main loop: collect experience in env and update/log each epoch
